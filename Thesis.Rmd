@@ -1,0 +1,2354 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  word_document: default
+  pdf_document: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+
+```{r}
+library(DESeq2) 
+library(ggplot2)
+library(drc)
+library(varhandle)
+library(dplyr)
+library(ranger)
+library(e1071)
+library(mlr3)
+library(mlr3tuning)
+library(mlr3learners)
+library(dplyr)
+library(ggplot2)
+
+library(mlr3pipelines)
+library(mlr3filters)
+library(praznik)
+```
+
+
+```{r}
+load("/Users/suprithapalguna/Desktop/Thesis/WesternDietMice-CountMatrix.Rdata")
+```
+
+```{r}
+head(ColumnData)
+head(CountData)
+```
+
+
+
+```{r}
+dds.both <- DESeqDataSetFromMatrix(countData = CountData,
+                              colData = ColumnData,
+                              design= ~ weeks+mouse)
+dds.both
+```
+
+```{r}
+keep <- rowSums(counts(dds.both)) >= 10
+dds.both <- dds.both[keep,]
+dds.both
+```
+
+```{r}
+dds.both <- DESeq(dds.both)
+```
+
+
+```{r}
+vsdata.both <- vst(dds.both, blind=FALSE)
+vsdata.both
+```
+```{r}
+res <- results(dds.both)
+head(results(dds.both, tidy=TRUE))
+```
+```{r}
+summary(res)
+```
+```{r}
+
+```
+
+```{r}
+pcaData <- plotPCA(vsdata.both, intgroup=c("weeks", "diet"), returnData=TRUE)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+ggplot(pcaData, aes(PC1, PC2, color=weeks, shape=diet)) +
+  geom_point(size=3) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed()
+```
+
+```{r}
+ColumnDataSD <- ColumnData[ColumnData$diet == 'SD', ]
+```
+
+
+```{r}
+columnNames = c("3w-SD-M1", "3w-SD-M2", "3w-SD-M3", "3w-SD-M4", "3w-SD-M5", "3w-SD-M6", "3w-SD-M7", "6w-SD-M1", "6w-SD-M2", "6w-SD-M3", "6w-SD-M4", "6w-SD-M5", "30w-SD-M1", "30w-SD-M2", "30w-SD-M3", "30w-SD-M4", "30w-SD-M5", "36w-SD-M1", "36w-SD-M2", "36w-SD-M3", "36w-SD-M4", "36w-SD-M5", "36w-SD-M6", "36w-SD-M7", "42w-SD-M1", "42w-SD-M2", "42w-SD-M3", "48w-SD-M1", "48w-SD-M2", "48w-SD-M3", "48w-SD-M4", "48w-SD-M5")
+CountDataSD <- subset(CountData, select = columnNames)
+```
+
+
+```{r}
+dds.SD <- DESeqDataSetFromMatrix(countData = CountDataSD,
+                              colData = ColumnDataSD,
+                              design= ~ weeks+mouse)
+dds.SD
+```
+
+
+```{r}
+keep <- rowSums(counts(dds.SD)) >= 10
+dds.SD <- dds.SD[keep,]
+dds.SD
+```
+
+
+```{r}
+colData(dds.SD)
+```
+
+
+```{r}
+dds.SD <- DESeq(dds.SD)
+```
+
+
+```{r}
+res <- results(dds.SD)
+head(results(dds.SD, tidy=TRUE))
+
+```
+
+```{r}
+summary(res)
+```
+
+```{r}
+#All genes
+res3vs6 <- results(dds.SD, contrast = c('weeks','3','6'),)
+res3vs6 <- res3vs6[!is.na(res3vs6$padj),]
+res3vs6.all <- res3vs6[res3vs6$padj < 0.05 & (res3vs6$log2FoldChange >= 1  | res3vs6$log2FoldChange <= -1),]
+res3vs6.all
+```
+
+
+```{r}
+#Up genes
+res3vs6.up <- res3vs6[res3vs6$padj < 0.05 & res3vs6$log2FoldChange >= 1,]
+res3vs6.up
+```
+
+
+```{r}
+#Down genes
+res3vs6.down <- res3vs6[res3vs6$padj < 0.05 & res3vs6$log2FoldChange <= -1,]
+res3vs6.down
+```
+```{r}
+results(dds.SD, contrast = c('weeks','3','30'))
+```
+
+```{r}
+res3vs30 = results(dds.SD, contrast = c('weeks','3','30'))
+res3vs30 <- res3vs30[!is.na(res3vs30$padj),]
+res3vs30.all <- res3vs30[res3vs30$padj < 0.05 & (res3vs30$log2FoldChange >= 1  | res3vs30$log2FoldChange <= -1),]
+```
+
+
+```{r}
+```
+
+
+```{r}
+(results(dds.both, contrast = c('weeks','3','30')))
+```
+
+
+```{r}
+```
+
+```{r}
+res3vs30.up <- res3vs30[res3vs30$padj < 0.05 & res3vs30$log2FoldChange >= 1,]
+res3vs30.up
+```
+
+```{r}
+res3vs30.down <- res3vs30[res3vs30$padj < 0.05 & res3vs30$log2FoldChange <= -1,]
+res3vs30.down
+```
+
+```{r}
+res3vs36 = results(dds.SD, contrast = c('weeks','3','36'))
+res3vs36 <- res3vs36[!is.na(res3vs36$padj),]
+res3vs36.all <- res3vs36[res3vs36$padj < 0.05 & (res3vs36$log2FoldChange >= 1  | res3vs36$log2FoldChange <= -1),]
+res3vs36.all
+```
+
+```{r}
+res3vs36.up <- res3vs36[res3vs36$padj < 0.05 & res3vs36$log2FoldChange >= 1,]
+res3vs36.up
+```
+
+```{r}
+res3vs36.down <- res3vs36[res3vs36$padj < 0.05 & res3vs36$log2FoldChange <= -1,]
+res3vs36.down
+```
+
+
+```{r}
+res3vs42 = results(dds.SD, contrast = c('weeks','3','42'))
+res3vs42 <- res3vs42[!is.na(res3vs42$padj),]
+res3vs42.all <- res3vs42[res3vs42$padj < 0.05 & (res3vs42$log2FoldChange >= 1  | res3vs42$log2FoldChange <= -1),]
+res3vs42.all
+```
+
+```{r}
+res3vs42.up <- res3vs42[res3vs42$padj < 0.05 & res3vs42$log2FoldChange >= 1,]
+res3vs42.up
+```
+
+```{r}
+res3vs42.down <- res3vs42[res3vs42$padj < 0.05 & res3vs42$log2FoldChange <= -1,]
+res3vs42.down
+```
+
+```{r}
+res3vs48 = results(dds.SD, contrast = c('weeks','3','48'))
+res3vs48 <- res3vs48[!is.na(res3vs48$padj),]
+res3vs48.all <- res3vs48[res3vs48$padj < 0.05 & (res3vs48$log2FoldChange >= 1  | res3vs48$log2FoldChange <= -1),]
+res3vs48.all
+```
+
+```{r}
+res3vs48.up <- res3vs48[res3vs48$padj < 0.05 & res3vs48$log2FoldChange >= 1,]
+res3vs48.up
+```
+
+```{r}
+res3vs48.down <- res3vs48[res3vs48$padj < 0.05 & res3vs48$log2FoldChange <= -1,]
+res3vs48.down
+```
+
+
+
+```{r}
+results.combined.all <- rbind(res3vs30.all, res3vs36.all, res3vs42.all, res3vs48.all)
+results.combined.all
+```
+
+```{r}
+results.combined.up <- rbind(res3vs30.up, res3vs36.up, res3vs42.up, res3vs48.up)
+results.combined.up
+```
+
+```{r}
+results.combined.down <- rbind(res3vs30.down, res3vs36.down, res3vs42.down, res3vs48.down)
+results.combined.down
+```
+
+```{r}
+library(ggVennDiagram)
+library(ggplot2)
+
+p1 <- ggVennDiagram(list(rownames(res3vs6.up), rownames(results.combined.up)), 
+                    category.names = c("week 3 vs 6", "week 3 vs 30, 36, 42, 48"))
+p1 + scale_x_continuous(expand = expansion(mult = .2))
+```
+
+
+```{r}
+VennDiagram::venn.diagram(
+  x = list(rownames(res3vs6.all), rownames(results.combined.all)),
+  category.names = c("week 3 vs 6", "week 3 vs 30, 36, 42, 48"),
+  filename ="allGenes.png",
+  output=TRUE) 
+```
+
+```{r}
+signficant.all <- setdiff(rownames(results.combined.all), rownames(res3vs6.all))
+```
+
+```{r}
+VennDiagram::venn.diagram(
+  x = list(rownames(res3vs6.up), rownames(results.combined.up)),
+  category.names = c("week 3 vs 6", "week 3 vs 30, 36, 42, 48"),
+  filename ="upGenes.png",
+  output=TRUE) 
+```
+
+```{r}
+signficant.up.genes <- setdiff(rownames(results.combined.up), rownames(res3vs6.up))
+```
+
+```{r}
+VennDiagram::venn.diagram(
+  x = list(rownames(res3vs6.down), rownames(results.combined.down)),
+  category.names = c("week 3 vs 6", "week 3 vs 30, 36, 42, 48"),
+  filename ="downGenes.png",
+  output=TRUE) 
+```
+
+
+```{r}
+signficant.down.genes <- setdiff(rownames(results.combined.down), rownames(res3vs6.down))
+```
+
+
+```{r}
+vsdata.SD <- vst(dds.SD, blind=FALSE)
+vsdata.SD
+```
+
+
+```{r}
+vstdata <- assay(vsdata.SD)
+vstdata <- as.data.frame(vstdata)
+vstdata$Gene <- rownames(vstdata)
+head(vstdata)
+```
+
+
+
+
+
+```{r}
+get.up.genes <- function(x){
+  tryCatch({
+      gene <- t(unname(vstdata[x,]))
+      #print(paste(gene,x))
+      df <- data.frame(count = gene[1:32],weeks = unfactor(vsdata.SD$weeks))     
+      df$count <- as.numeric(df$count) 
+      df$weeks <- as.integer(df$weeks) 
+      model <- drm(count~weeks, data=df, fct = LL2.4())
+      fit <- fitted(model)
+      ed <- ED(model, type="absolute", fit[1]+log2(1.5))
+      if(!is.na(ed[1]) & exp(ed[1])>=3 & exp(ed[1]) <= 48)
+      {
+        up.genes <<- append(up.genes, gene[33])
+        print(summary(model))
+        plot(model, broken=TRUE, type="all", col="grey", pch=16,log = "", xlab="weeks", ylab="count", main= paste('Gene',gene[33]))
+        plot(model, broken=TRUE, type="average", col="black", pch=16,log = "", add=TRUE)
+        abline(h=fit[1]+log2(1.5), lty=2, col="red")
+      }
+    }
+  
+          , error = function(e) {an.error.occured <<- TRUE})
+}
+```
+
+
+```{r}
+#up.genes = c()
+lapply(15001:18833, get.up.genes)
+```
+
+```{r}
+length(up.genes)
+```
+
+
+```{r}
+#saveRDS(up.genes, file = "upgenes.RDS") 
+model.up.genes <- readRDS("upgenes.RDS")
+```
+
+
+
+```{r}
+gene <- t(unname(vstdata[5,]))
+df <- data.frame(count = gene[1:32],weeks = unfactor(vsdata.SD$weeks))     
+df$count <- as.numeric(df$count) 
+df$weeks <- as.integer(df$weeks)
+obj1 <- drm(count~weeks, data=df, fct = LL2.4())
+summary(obj1)
+plot(obj1, broken=TRUE, type="all", col="grey", pch=16,log = "", xlab="weeks", ylab="count", main= paste('Gene', gene[33]))
+plot(obj1, broken=TRUE, type="average", col="black", pch=16,log = "", add=TRUE)
+fit1 <- fitted(obj1)           # Apply fitted function
+abline(h=fit1[1]-log2(1.5), lty=2, col="red")
+
+```
+
+
+```{r}
+coef(obj1)[2]
+fit1 <- fitted(obj1) 
+fit1
+fit1[1]-log2(1.5)
+ed <- ED(obj1, type="absolute", fit1[1]-log2(1.5))
+ed[1]
+exp(ed[1])
+```
+
+
+
+```{r}
+get.down.genes <- function(x){
+  tryCatch({ 
+      gene <- t(unname(vstdata[x,]))
+      #print(paste(gene,x))
+      df <- data.frame(count = gene[1:32],weeks = unfactor(vsdata.SD$weeks))     
+      df$count <- as.numeric(df$count) 
+      df$weeks <- as.integer(df$weeks) 
+      model <- drm(count~weeks, data=df, fct = LL2.4())
+      fit <- fitted(model)
+      ed <- ED(model, type="absolute", fit[1]-log2(1.5))
+      if(!is.na(ed[1]) & exp(ed[1])>=3 & exp(ed[1]) <= 48)
+      {
+        down.genes <<- append(down.genes, gene[33])
+        #print(summary(model))
+        #print(paste('Gene',gene[33], x))
+      }
+    }
+  
+          , error = function(e) {an.error.occured <<- TRUE})
+}
+```
+
+
+```{r}
+#down.genes = c()
+lapply(15001:18833, get.down.genes)
+```
+
+
+
+```{r}
+length(down.genes)
+```
+
+
+```{r}
+#saveRDS(down.genes, file = "downgenes.RDS") 
+model.down.genes <- readRDS("downgenes.RDS")
+```
+
+
+```{r}
+saveRDS(all.genesData, file = "allgenes.RDS") 
+```
+
+
+```{r}
+saveRDS(model.down.genesData, file = "model.down.genesData.RDS") 
+```
+
+
+
+
+
+```{r}
+# selecting top 500 genes with highest variability from a Standard diet
+naive_df <- as.data.frame(assay(vsdata.SD))
+gene_variances <- apply(naive_df, 1, var)
+sorted_genes <- order(gene_variances, decreasing = TRUE)
+top_genes <- sorted_genes[1:500]
+
+naive.genes <- rownames(naive_df[top_genes, ])
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+library(readxl)
+tumor_data <- read_excel("tumor_data.xlsx")
+tumor_data
+```
+
+
+
+```{r}
+vstdata.both <- as.data.frame(assay(vsdata.both))
+head(vstdata.both)
+```
+
+```{r}
+dat <- t(vstdata.both)
+```
+
+
+
+
+
+```{r}
+getMergedGenes <- function(y){
+  selected.genes <- dat[, colnames(dat) %in% y] #getting gene expression data from gene names
+  #merge tumor column
+  merged.genes <- merge(selected.genes, tumor_data, by.x = 0, by.y = "ID", all.x = TRUE)
+  #removing rows with NA values   after merging
+  merged.genes <- merged.genes[complete.cases(merged.genes$Tumor), ]
+  merged.genes$Tumor <- factor(merged.genes$Tumor, levels = c(0, 1))
+  # Convert unsupported types to character or factor
+  selected_data <- as.data.frame(lapply(merged.genes, function(x) {
+    if (class(x) %in% c("integer64", "AsIs")) {
+      as.character(x)
+    } else {
+      x
+    }
+  }), stringsAsFactors = FALSE)
+  return(selected_data)
+}
+```
+
+
+```{r}
+model.down.genesData <- getMergedGenes(model.down.genes)
+model.up.genesData <- getMergedGenes(model.up.genes)
+naive.genesData <- getMergedGenes(naive.genes)
+signficant.down.genesData <- getMergedGenes(signficant.down.genes)
+signficant.up.genesData <- getMergedGenes(signficant.up.genes)
+```
+
+```{r}
+all.genes <- rownames(vstdata.both)
+all.genesData <- getMergedGenes(all.genes) 
+```
+
+```{r}
+featurelessClassif <- function(x){
+  class_counts <- table(x$Tumor)
+  majority_class <- names(class_counts)[which.max(class_counts)]
+  
+  predictions <- rep(majority_class, nrow(x))
+  print(predictions)
+  actual <- x$Tumor
+  print(actual)
+  accuracy <- mean(predictions == actual)
+  confusion_matrix <- table(Actual = actual, Predicted = predictions)
+  
+  return(c(accuracy, confusion_matrix))
+}
+```
+
+```{r}
+up.genes.featureless <- featurelessClassif(model.up.genesData)
+up.genes.featureless
+down.genes.featureless <- featurelessClassif(model.down.genesData)
+
+```
+
+
+
+```{r}
+tuner = tnr("grid_search", resolution = 5, batch_size = 10)
+tuner
+```
+
+```{r}
+set.seed(123)
+```
+
+```{r}
+results.overall <- list()
+```
+
+```{r}
+ getAvgConfMatrix <- function(confusion_matrices){
+  summed_matrix <- matrix(0, nrow = nrow(confusion_matrices[[1]]), 
+                          ncol = ncol(confusion_matrices[[1]]))
+
+  # Sum all the confusion matrices
+  for (i in 1:length(confusion_matrices)) {
+    summed_matrix <- summed_matrix + confusion_matrices[[i]]
+  }
+
+  # Calculate the average by dividing by the number of matrices
+  average_matrix <- (summed_matrix / length(confusion_matrices))
+  return(average_matrix)
+}
+
+```
+
+Random Forest
+
+```{r}
+as.data.table(lrn("classif.ranger")$param_set)[,
+  .(id, class, lower, upper, nlevels)]
+
+
+```
+
+```{r}
+applyRanger <- function(x){
+  #x <- x[, -which(names(x) == "Row.names")]
+  task <- as_task_classif(x, target = "Tumor", id = "Row.names", positive = "1")
+  task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner = lrn("classif.ranger", 
+                mtry  = to_tune(1, ncol(x)-2), 
+                num.trees = to_tune(1, 2000), 
+                sample.fraction = to_tune(0.1, 1)
+  )
+  
+  at = auto_tuner(tuner = tuner, 
+                  learner = learner, 
+                  resampling = rsmp("cv", folds = 4),
+                  measure = msr("classif.acc"),
+  )
+  resampling = rsmp("cv", folds = 5)
+  rr = resample(task, at, resampling, store_models = TRUE)
+  
+  accuracy = rr$aggregate(msr("classif.acc"))
+
+  confusionMatrix = rr$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+
+```{r}
+
+  results <- applyRanger(model.down.genesData)
+  results$data = 'Model down genes'
+  results$model= 'Ranger'
+  results.overall <- c(results.overall, list(results))
+
+length(results.overall)
+```
+
+
+```{r}
+
+  results <- applyRanger(model.up.genesData)
+  results$data = 'Model up genes'
+  results$model= 'Ranger'
+  results.overall <- c(results.overall, list(results))
+
+length(results.overall)
+```
+
+```{r}
+
+  results <- applyRanger(naive.genesData)
+  results$data = 'Naive genes'
+  results$model= 'Ranger'
+  results.overall <- c(results.overall, list(results))
+
+length(results.overall)
+```
+
+```{r}
+
+  results <- applyRanger(signficant.down.genesData)
+  results$data = 'Significant down genes'
+  results$model= 'Ranger'
+  results.overall <- c(results.overall, list(results))
+
+length(results.overall)
+```
+
+```{r}
+
+  results <- applyRanger(signficant.up.genesData)
+  results$data = 'Significant up genes'
+  results$model= 'Ranger'
+  results.overall <- c(results.overall, list(results))
+
+length(results.overall)
+```
+
+
+
+
+
+
+SVM
+
+```{r}
+as.data.table(lrn("classif.svm")$param_set)[,
+  .(id, class, lower, upper, nlevels)]
+
+
+```
+
+
+```{r}
+applySVM <- function(x){
+  x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.SVM = lrn("classif.svm",
+                    cost  = to_tune(1e-12, 1e12, logscale = TRUE),
+                    gamma = to_tune(1e-12, 1e12, logscale = TRUE),
+                    kernel = "radial",
+                    type = "C-classification"
+  )
+  at = auto_tuner(tuner = tuner,
+                  learner = learner.SVM,
+                  resampling = rsmp("cv", folds = 5),
+                  measure = msr("classif.acc"),
+  )
+ 
+  resampling = rsmp("cv", folds = 4)
+
+  rrSVM = resample(taskSVM, at, resampling, store_models = TRUE)
+  
+  accuracy = rrSVM$aggregate(msr("classif.acc")) 
+
+  confusionMatrix = rrSVM$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+```{r}
+for (i in 1:5) {
+  results <- applySVM(model.down.genesData)
+  results$data = 'Model down genes'
+  results$model= 'SVM Radial'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVM(model.up.genesData)
+  results$data = 'Model up genes'
+  results$model= 'SVM Radial'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVM(naive.genesData)
+  results$data = 'Naive genes'
+  results$model= 'SVM Radial'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVM(signficant.down.genesData)
+  results$data = 'Significant down genes'
+  results$model= 'SVM Radial'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVM(signficant.up.genesData)
+  results$data = 'Significant up genes'
+  results$model= 'SVM Radial'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+SVM Linear
+
+```{r}
+applySVML <- function(x){
+  x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.SVML = lrn("classif.svm", 
+                     cost  = to_tune(1e-12, 1e12, logscale = TRUE), 
+                     kernel = "linear", 
+                     type = "C-classification"
+  )
+
+  at = auto_tuner(tuner = tuner, 
+                  learner = learner.SVML,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc"),
+  )
+  resampling = rsmp("cv", folds = 4)
+
+  rrSVML = resample(taskSVM, at, resampling, store_models = TRUE)
+
+  
+  accuracy = rrSVML$aggregate(msr("classif.acc")) 
+
+  confusionMatrix = rrSVML$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVML(model.down.genesData)
+  results$data = 'Model down genes'
+  results$model= 'SVM Linear'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVML(model.up.genesData)
+  results$data = 'Model up genes'
+  results$model= 'SVM Linear'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVML(naive.genesData)
+  results$data = 'Naive genes'
+  results$model= 'SVM Linear'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVML(signficant.down.genesData)
+  results$data = 'Significant down genes'
+  results$model= 'SVM Linear'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+
+```{r}
+for (i in 1:5) {
+  results <- applySVML(signficant.up.genesData)
+  results$data = 'Significant up genes'
+  results$model= 'SVM Linear'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+
+
+```{r}
+df <- as.data.frame(do.call(rbind, results.overall))
+head(df)
+```
+
+```{r}
+subset_df <- df[df$model == 'Penalized LR' & df$data == 'Significant down genes', ]
+confusion_matrices <- subset_df$ConfusionMatrix
+print(confusion_matrices[[1]])
+acc = 0
+for (i in 1:length(subset_df$Accuracy)) {
+    acc <- acc + subset_df$Accuracy[[i]]
+}
+
+  # Calculate the average by dividing by the number of matrices
+acc <- acc/ length(subset_df$Accuracy)
+print(acc)
+print(getAvgConfMatrix(confusion_matrices))
+```
+
+
+
+```{r}
+df <- data.frame(
+  Accuracy = unlist(df$Accuracy),
+  Dataset = unlist(df$data),
+  Learner = unlist(df$model)
+)
+```
+
+
+```{r}
+ggplot(df, aes(x = Learner, y = Accuracy)) +
+  geom_point(color = "green") +  # You can also use geom_bar() if you prefer bars
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 0.5)) +
+  stat_summary(fun = mean, geom = "point", color = "blue", size = 2) +  # Black mean points
+  facet_wrap(~ Dataset, nrow = 1) +  # Facet by DatasetName
+  geom_jitter(alpha = 0.4, color = "tomato")
+  labs(title = "Accuracy by Learner and Dataset", x = "Learner", y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+
+```
+
+
+Penalized Logistic Regression
+
+```{r}
+as.data.table(lrn("classif.cv_glmnet")$param_set)[,
+  .(id, class, lower, upper, nlevels)]
+
+```
+
+
+```{r}
+applyPLR <- function(x){
+  x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.LogReg <- lrn("classif.cv_glmnet",
+                      s = to_tune(1e-12, 1e12, logscale = TRUE),
+                      alpha = to_tune(0, 1)
+                      )
+
+  at = auto_tuner(tuner = tuner,
+                  learner = learner.LogReg,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc")
+                  )
+  resampling = rsmp("cv", folds = 3)
+
+  rr.logreg = resample(taskSVM, at, resampling, store_models = TRUE)
+
+  accuracy = rr.logreg$aggregate(msr("classif.acc"))
+
+  confusionMatrix = rr.logreg$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applyPLR(model.down.genesData)
+  results$data = 'Model down genes'
+  results$model= 'Penalized LR'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applyPLR(model.up.genesData)
+  results$data = 'Model up genes'
+  results$model= 'Penalized LR'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applyPLR(naive.genesData)
+  results$data = 'Naive genes'
+  results$model= 'Penalized LR'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+for (i in 1:5) {
+  results <- applyPLR(signficant.down.genesData)
+  results$data = 'Significant down genes'
+  results$model= 'Penalized LR'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+
+```{r}
+for (i in 1:5) {
+  results <- applyPLR(signficant.up.genesData)
+  results$data = 'Significant up genes'
+  results$model= 'Penalized LR'
+  results.overall <- c(results.overall, list(results))
+}
+length(results.overall)
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+task = as_task_classif(data, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+learner = lrn("classif.ranger")
+learner$param_set$values = list(importance = "impurity")
+filter = flt("importance")
+po_filter = po("filter", filter = filter,
+  filter.nfeat = to_tune(1, task$ncol))
+
+graph = as_learner(po_filter %>>% po("learner", learner))
+
+instance = tune(tnr("random_search"), task, graph,
+  rsmp("cv", folds = 3), term_evals = 10)
+instance$result
+
+```
+
+
+```{r}
+as.data.table(instance$archive)
+```
+```{r}
+learner$param_set$values = instance$result_learner_param_vals
+```
+
+
+```{r}
+
+filter.results.overall <- list()
+```
+
+
+```{r}
+tuner = tnr("grid_search", resolution = 5, batch_size = 10)
+applySVMLF <- function(x){
+  x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.SVML = lrn("classif.svm", 
+                     cost  = to_tune(1e-12, 1e12, logscale = TRUE), 
+                     kernel = "linear", 
+                     type = "C-classification"
+  )
+
+  po_filter = po("filter", filter = flt("variance"), filter.nfeat = to_tune(1, taskSVM$ncol))
+  graph = as_learner(po_filter %>>% po("learner", learner.SVML))
+  
+  at = auto_tuner(tuner = tuner, learner = graph,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc")
+  )
+  resampling = rsmp("cv", folds = 3)
+
+  rrSVML = resample(taskSVM, at, resampling, store_models = TRUE)
+
+  
+  accuracy = rrSVML$aggregate(msr("classif.acc")) 
+
+  confusionMatrix = rrSVML$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+  
+  
+  
+  
+}
+```
+
+
+
+```{r}
+results <- applySVMLF(model.up.genesData)
+results$data = 'Model up genes'
+results$model= 'SVM Linear'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+
+```{r}
+results <- applySVMLF(model.down.genesData)
+results$data = 'Model down genes'
+results$model= 'SVM Linear'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+```{r}
+results <- applySVMLF(signficant.down.genesData)
+results$data = 'Significant down genes'
+results$model= 'SVM Linear'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applySVMLF(signficant.up.genesData)
+results$data = 'Significant up genes'
+results$model= 'SVM Linear'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applySVMLF(naive.genesData)
+results$data = 'Naive genes'
+results$model= 'SVM Linear'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+applySVMF <- function(x){
+  x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.SVM = lrn("classif.svm",
+                    cost  = to_tune(1e-12, 1e12, logscale = TRUE),
+                    gamma = to_tune(1e-12, 1e12, logscale = TRUE),
+                    kernel = "radial",
+                    type = "C-classification"
+  )
+  
+  po_filter = po("filter", filter = flt("variance"), filter.nfeat = to_tune(1, taskSVM$ncol))
+  graph = as_learner(po_filter %>>% po("learner", learner.SVM))
+  
+  at = auto_tuner(tuner = tuner,
+                  learner = graph,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc"),
+  )
+ 
+  resampling = rsmp("cv", folds = 3)
+
+  rrSVM = resample(taskSVM, at, resampling, store_models = TRUE)
+  
+  accuracy = rrSVM$aggregate(msr("classif.acc")) 
+
+  confusionMatrix = rrSVM$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+```{r}
+results <- applySVMF(model.up.genesData)
+results$data = 'Model up genes'
+results$model= 'SVM Radial'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+
+```{r}
+results <- applySVMF(model.down.genesData)
+results$data = 'Model down genes'
+results$model= 'SVM Radial'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+```{r}
+results <- applySVMF(signficant.down.genesData)
+results$data = 'Significant down genes'
+results$model= 'SVM Radial'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applySVMF(signficant.up.genesData)
+results$data = 'Significant up genes'
+results$model= 'SVM Radial'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applySVMF(naive.genesData)
+results$data = 'Naive genes'
+results$model= 'SVM Radial'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+saveRDS(filter.results.allgenes, file = "AllgenesPLRVariance.RDS") 
+```
+
+```{r}
+filter.results.allgenes<-readRDS("resultsSVMLallVariance.RDS")
+#filter.results.allgenes<-filter.results.allgenes[-4]
+```
+
+```{r}
+combined_list <- c(filter.results.allgenes, combined_list)
+```
+
+```{r}
+
+```
+
+```{r}
+df_filter <- as.data.frame(do.call(rbind, combined_list))
+
+df_filter <- data.frame(
+  Accuracy = unlist(df_filter$accuracy),
+  Dataset = unlist(df_filter$data),
+  Learner = unlist(df_filter$model)
+)
+```
+
+
+```{r}
+ggplot(df_filter, aes(x = Learner, y = Accuracy)) +
+  geom_point(color = "green") +  # You can also use geom_bar() if you prefer bars
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 0.5)) +
+  stat_summary(fun = mean, geom = "point", color = "blue", size = 2) +  # Black mean points
+  facet_wrap(~ Dataset, nrow = 1) +  # Facet by DatasetName
+  geom_jitter(alpha = 0.4, color = "tomato")
+  labs(title = "Accuracy by Learner and Dataset with JMIM filter", x = "Learner", y = "Accuracy") +
+  theme_minimal()
+```
+
+
+```{r}
+applyPLRF <- function(x){
+  x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.LogReg <- lrn("classif.cv_glmnet",
+                      s = to_tune(1e-12, 1e12, logscale = TRUE),
+                      alpha = to_tune(0, 1)
+                      )
+  #po_filter = po("filter", filter = flt("permutation", nmc = 2), filter.n = 0.5)
+  #graph = as_learner(po_filter %>>% po("learner", learner.LogReg))
+  po_filter = po("filter", filter = flt("variance"), filter.nfeat = to_tune(20, 1000))
+  graph = as_learner(po_filter %>>% po("learner", learner.LogReg))
+  
+  at = auto_tuner(tuner = tuner,
+                  learner = graph,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc")
+                  )
+  resampling = rsmp("cv", folds = 3)
+
+  rr.logreg = resample(taskSVM, at, resampling, store_models = TRUE)
+
+  accuracy = rr.logreg$aggregate(msr("classif.acc"))
+
+  confusionMatrix = rr.logreg$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+```{r}
+
+  results <- applyPLRF(all.genesData)
+  results$data = 'All genes'
+  results$model= 'Penalized LR'
+  ress <- c(ress, list(results))
+
+length(ress)
+```
+```{r}
+ress.variance <- list()
+```
+
+```{r}
+
+  results <- applyPLRF(all.genesData)
+  results$data = 'All genes'
+  results$model= 'Penalized LR'
+  ress.variance <- c(ress.variance, list(results))
+
+length(ress.variance)
+```
+
+
+```{r}
+tuner = tnr("grid_search", resolution = 5, batch_size = 10)
+x <- model.up.genesData
+x <- x[, -which(names(x) == "Row.names")]
+taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+learner <- lrn("classif.ranger"
+                      )
+po_filter = po("filter", filter = flt("permutation"), filter.nfeat = to_tune(1, taskSVM$ncol))
+  graph = as_learner(po_filter %>>% po("learner", learner))
+  
+  at = auto_tuner(tuner = tuner,
+                  learner = graph,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc")
+                  )
+  resampling = rsmp("cv", folds = 3)
+  
+  at
+  
+  r1 = resample(taskSVM, at, resampling, store_models = TRUE)
+```
+
+```{r}
+
+```
+
+```{r}
+filter.results.allgenes <- list()
+```
+
+```{r}
+results <- applyPLRF(all.genesData)
+results$data = 'All genes'
+results$model= 'Penalized LR'
+filter.results.allgenes <- c(filter.results.allgenes, list(results))
+length(filter.results.allgenes)
+```
+
+
+```{r}
+results <- applyPLRF(model.up.genesData)
+results$data = 'Model up genes'
+results$model= 'Penalized LR'
+filter.results.allgenes <- c(filter.results.allgenes, list(results))
+length(filter.results.allgenes)
+```
+
+
+
+```{r}
+results <- applyPLRF(model.down.genesData)
+results$data = 'Model down genes'
+results$model= 'Penalized LR'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+```{r}
+results <- applyPLRF(signficant.down.genesData)
+results$data = 'Significant down genes'
+results$model= 'Penalized LR'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applyPLRF(signficant.up.genesData)
+results$data = 'Significant up genes'
+results$model= 'Penalized LR'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applyPLRF(naive.genesData)
+results$data = 'Naive genes'
+results$model= 'Penalized LR'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+```{r}
+applyRangerF <- function(x){
+  #x <- x[, -which(names(x) == "Row.names")]
+  task <- as_task_classif(x, target = "Tumor", id = "Row.names", positive = "1")
+  task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner = lrn("classif.ranger",
+                num.trees = to_tune(1, 2000), 
+                sample.fraction = to_tune(0.3, 1)
+  )
+  po_filter = po("filter", filter = flt("variance"), filter.nfeat = to_tune(20, task$ncol))
+  graph = as_learner(po_filter %>>% po("learner", learner))
+  
+  at = auto_tuner(tuner = tuner, 
+                  learner = graph, 
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc"),
+  )
+  resampling = rsmp("cv", folds = 3)
+  rr = resample(task, at, resampling, store_models = TRUE)
+  
+  accuracy = rr$aggregate(msr("classif.acc"))
+
+  confusionMatrix = rr$prediction()$confusion
+  
+  return(list(accuracy = accuracy, confusionMatrix = confusionMatrix))
+}
+```
+
+
+```{r}
+results <- applyRangerF(model.down.genesData)
+results$data = 'Model down genes'
+results$model= 'Ranger'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+```{r}
+results <- applyRangerF(model.up.genesData)
+results$data = 'Model up genes'
+results$model= 'Ranger'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+
+```{r}
+results <- applyRangerF(signficant.down.genesData)
+results$data = 'Significant down genes'
+results$model= 'Ranger'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applyRangerF(signficant.up.genesData)
+results$data = 'Significant up genes'
+results$model= 'Ranger'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+results <- applyRangerF(naive.genesData)
+results$data = 'Naive genes'
+results$model= 'Ranger'
+filter.results.overall <- c(filter.results.overall, list(results))
+length(filter.results.overall)
+```
+
+```{r}
+data <- model.up.genesData
+```
+
+
+
+
+```{r}
+task = as_task_classif(data, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+learner = lrn("classif.ranger")
+
+# tune between 1 and total number of features
+po_filter = po("filter", filter = flt("jmim"),
+  filter.nfeat = to_tune(1, task$ncol))
+
+graph = as_learner(po_filter %>>% po("learner", learner))
+
+instance = tune(tnr("random_search"), task, graph,
+  rsmp("cv", folds = 3), term_evals = 10)
+instance$result
+```
+
+```{r}
+set.seed(42)  # Setting a seed for reproducibility
+
+# Generate 4 random numbers with at least a 2000 gap
+random_numbers.modeldown <- sample(seq(50, length(model.down.genesData), by = 50), 4)
+
+random_numbers.modelup <- sample(seq(50, length(model.up.genesData), by = 50), 4)
+
+random_numbers.naive <- sample(seq(50, length(naive.genesData), by = 50), 4)
+
+random_numbers.sigup <- sample(seq(50, length(signficant.down.genesData), by = 50), 4)
+
+random_numbers.sigdown <- sample(seq(50, length(signficant.up.genesData), by = 50), 4)
+
+```
+
+```{r}
+task = as_task_classif(all.genesData, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+learner = lrn("classif.ranger")
+learner$param_set$values = list(importance = "impurity")
+
+filter = flt("importance", learner = learner)
+filter$calculate(task)
+```
+
+
+```{r}
+x <- model.down.genesData
+x <- x[, -which(names(x) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+filter = flt("jmim")
+filter$calculate(task)
+i = 1
+for (number in random_numbers.modeldown) {
+  df <- getMergedGenes(head(as.data.table(filter)$feature, number))
+  saveRDS(df, paste0("model_down_jmim", i, ".RDS"))
+i <- i +1
+}
+
+```
+
+```{r}
+x <- model.up.genesData
+x <- x[, -which(names(x) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+filter = flt("jmim")
+filter$calculate(task)
+i = 1
+for (number in random_numbers.modelup) {
+  df <- getMergedGenes(head(as.data.table(filter)$feature, number))
+  saveRDS(df, paste0("model_up_jmim", i, ".RDS"))
+i <- i +1
+}
+
+
+```
+
+```{r}
+x <- naive.genesData
+x <- x[, -which(names(x) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+filter = flt("jmim")
+filter$calculate(task)
+
+i = 1
+for (number in random_numbers.naive) {
+  df <- getMergedGenes(head(as.data.table(filter)$feature, number))
+  saveRDS(df, paste0("naive_jmim", i, ".RDS"))
+i <- i +1
+}
+
+```
+
+```{r}
+x <- signficant.down.genesData
+x <- x[, -which(names(x) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+filter = flt("jmim")
+filter$calculate(task)
+i = 1
+for (number in random_numbers.sigdown) {
+  df <- getMergedGenes(head(as.data.table(filter)$feature, number))
+  saveRDS(df, paste0("sig_down_jmim", i, ".RDS"))
+i <- i +1
+}
+
+
+```
+
+```{r}
+x <- signficant.up.genesData
+x <- x[, -which(names(x) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+filter = flt("jmim")
+filter$calculate(task)
+i = 1
+for (number in random_numbers.sigup) {
+  df <- getMergedGenes(head(as.data.table(filter)$feature, number))
+  saveRDS(df, paste0("sig_up_jmim", i, ".RDS"))
+i <- i +1
+}
+```
+
+```{r}
+for (i in 4) {
+  file_name <- paste0("/Users/suprithapalguna/Desktop/Thesis/model_down_impurity", i, ".RDS")
+  applyPLR(readRDS(file_name))
+  
+}
+```
+
+```{r}
+x <- all.genesData
+x <- x[, -which(names(x) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+task$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+
+filter = flt("variance")
+filter$calculate(task)
+```
+
+
+```{r}
+
+filtered.mup.perm1 <- head(as.data.table(filter)$feature, 100)
+filtered.mup.perm2 <- head(as.data.table(filter)$feature, 500)
+filtered.mup.perm3 <- head(as.data.table(filter)$feature, 2000)
+filtered.mup.perm4 <- head(as.data.table(filter)$feature, 5000)
+
+filtered.mup.geneData1 <- getMergedGenes(filtered.mup.perm1)
+filtered.mup.geneData2 <- getMergedGenes(filtered.mup.perm2)
+filtered.mup.geneData3 <- getMergedGenes(filtered.mup.perm3)
+filtered.mup.geneData4 <- getMergedGenes(filtered.mup.perm4)
+```
+
+
+
+
+```{r}
+
+```
+
+```{r}
+allgenes_permutation_list <- list(
+  filtered.mup.geneData1,
+  filtered.mup.geneData2,
+  filtered.mup.geneData3
+)
+saveRDS(allgenes_permutation_list, file = "allgenes_jmim_list.RDS") 
+```
+
+```{r}
+results.allgenes.Ranger <- list ()
+gene_data_list <- readRDS("/Users/suprithapalguna/Desktop/Thesis/allgenes_impurity_list.RDS")
+
+```
+
+```{r}
+for(gene_data in gene_data_list) {
+    results <- applyRanger(gene_data)
+    results$data = 'All genes'
+    results$model= 'Ranger'
+    results.allgenes.Ranger <- c(results.allgenes.Ranger, list(results))
+}
+length(results.allgenes.Ranger)
+```
+```{r}
+permutation_list2 <- readRDS("/Users/suprithapalguna/Desktop/Thesis/allgenespermutationFinal.RDS")
+```
+
+```{r}
+results.allgenes.permutation <- c(results.allgenes.PLR, permutation_list)
+saveRDS(results.allgenes.permutation, file = "allgenespermutationFinal.RDS")
+```
+
+```{r}
+permutation_list <- readRDS("/Users/suprithapalguna/Downloads/resultsallgenesPermutation.RDS")
+```
+
+```{r}
+df_perm1 <- as.data.frame(do.call(rbind, results.allgenes.permutation))
+
+df_perm1 <- data.frame(
+  Accuracy = unlist(df_perm1$accuracy),
+  Dataset = unlist(df_perm1$data),
+  Learner = unlist(df_perm1$model)
+)
+df_perm1
+```
+
+```{r}
+#impurity
+df_perm <- as.data.frame(do.call(rbind, results.allgenes.Ranger))
+
+df_perm <- data.frame(
+  Accuracy = unlist(df_perm$accuracy),
+  Dataset = unlist(df_perm$data),
+  Learner = unlist(df_perm$model)
+)
+df_perm
+```
+
+
+```{r}
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_perm), by = 4)) {
+  subset_df <- df_perm[i:(i + 3), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+```
+
+
+IMPURITY
+
+```{r}
+imp_gene_data_list <- readRDS("/Users/suprithapalguna/Desktop/Thesis/allgenes_impurity_list.RDS")
+results.allgenes.PLR.Imp <- list()
+results.allgenes.Ranger.Imp <- list()
+```
+
+```{r}
+for(gene_data in imp_gene_data_list) {
+    results <- applyRanger(gene_data)
+    results$data = 'All genes'
+    results$model= 'Ranger'
+    results.allgenes.Ranger.Imp <- c(results.allgenes.Ranger.Imp, list(results))
+}
+length(results.allgenes.Ranger.Imp)
+```
+
+```{r}
+for(gene_data in imp_gene_data_list) {
+    results <- applyPLR(gene_data)
+    results$data = 'All genes'
+    results$model= 'Penalized LR'
+    results.allgenes.PLR.Imp <- c(results.allgenes.PLR.Imp, list(results))
+}
+length(results.allgenes.PLR.Imp)
+```
+
+
+```{r}
+df_plr_ipm <- as.data.frame(do.call(rbind, results.allgenes.PLR.Imp))
+
+df_plr_ipm <- data.frame(
+  Accuracy = unlist(df_plr_ipm$accuracy),
+  Dataset = unlist(df_plr_ipm$data),
+  Learner = unlist(df_plr_ipm$model)
+)
+
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_plr_ipm), by = 3)) {
+  subset_df <- df_plr_ipm[i:(i + 2), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+df_plr_ipm <- averages_df
+```
+
+```{r}
+df_ranger_ipm <- as.data.frame(do.call(rbind, results.allgenes.Ranger.Imp))
+
+df_ranger_ipm <- data.frame(
+  Accuracy = unlist(df_ranger_ipm$accuracy),
+  Dataset = unlist(df_ranger_ipm$data),
+  Learner = unlist(df_ranger_ipm$model)
+)
+
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_ranger_ipm), by = 3)) {
+  subset_df <- df_ranger_ipm[i:(i + 2), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+df_ranger_ipm <- averages_df
+```
+
+
+```{r}
+resultallgenesImpurity <-readRDS("/Users/suprithapalguna/Downloads/resultsallgenesImpurity.RDS")
+df_allgenes_ipm <- as.data.frame(do.call(rbind, resultallgenesImpurity))
+
+df_allgenes_ipm <- data.frame(
+  Accuracy = unlist(df_allgenes_ipm$accuracy),
+  Dataset = unlist(df_allgenes_ipm$data),
+  Learner = unlist(df_allgenes_ipm$model)
+)
+
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_allgenes_ipm), by = 4)) {
+  subset_df <- df_allgenes_ipm[i:(i + 3), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+df_allgenes_ipm <- averages_df
+```
+
+```{r}
+resultRestgenesImpurity <- c(readRDS("/Users/suprithapalguna/Downloads/resultsRestgenesImpurity.RDS"),readRDS("/Users/suprithapalguna/Downloads/resultsRestgenesImpurityRanger.RDS"))
+df_restgenes_ipm <- as.data.frame(do.call(rbind, resultRestgenesImpurity))
+
+df_restgenes_ipm <- data.frame(
+  Accuracy = unlist(df_restgenes_ipm$accuracy),
+  Dataset = unlist(df_restgenes_ipm$data),
+  Learner = unlist(df_restgenes_ipm$model)
+)
+
+```
+
+
+```{r}
+df_allgenes <- rbind(df_plr_ipm, df_ranger_ipm, df_allgenes_ipm, df_restgenes_ipm)
+df_allgenes
+```
+```{r}
+df_allgenes$Accuracy <- as.numeric(df_allgenes$Accuracy)
+ggplot(df_allgenes, aes(x = Learner, y = Accuracy)) +
+  geom_point(color = "green") +  # You can also use geom_bar() if you prefer bars
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 0.5)) +
+  stat_summary(fun = mean, geom = "point", color = "blue", size = 2) +  # Black mean points
+  facet_wrap(~ Dataset, nrow = 1) + # Facet by DatasetName
+  geom_jitter(width = 0.2, alpha = 0.4, color = "tomato")
+  labs(title = "Accuracy by Learner and Dataset with Impurity filter", x = "Learner", y = "Accuracy") +
+  theme_minimal()
+```
+```{r}
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+```
+
+PERMUTATION
+```{r}
+resultallgenesPermutation <- readRDS("/Users/suprithapalguna/Desktop/Thesis/allgenespermutationFinal.RDS")
+df_allgenes_perm <- as.data.frame(do.call(rbind, resultallgenesPermutation))
+
+df_allgenes_perm <- data.frame(
+  Accuracy = unlist(df_allgenes_perm$accuracy),
+  Dataset = unlist(df_allgenes_perm$data),
+  Learner = unlist(df_allgenes_perm$model)
+)
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_allgenes_perm), by = 4)) {
+  subset_df <- df_allgenes_perm[i:(i + 3), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+df_allgenes_perm <- averages_df
+
+```
+
+
+```{r}
+resultRestgenesPermutation <- readRDS("/Users/suprithapalguna/Downloads/resultsRestgenesPerm.RDS")
+df_restgenes_perm <- as.data.frame(do.call(rbind, resultRestgenesPermutation))
+
+df_restgenes_perm <- data.frame(
+  Accuracy = unlist(df_restgenes_perm$accuracy),
+  Dataset = unlist(df_restgenes_perm$data),
+  Learner = unlist(df_restgenes_perm$model)
+)
+
+```
+
+
+```{r}
+df_allgenes.perm <- rbind(df_allgenes_perm, df_restgenes_perm)
+```
+
+```{r}
+#df_allgenes.perm$Accuracy <- as.numeric(df_allgenes.perm$Accuracy)
+ggplot(df_allgenes.perm, aes(x = Learner, y = Accuracy)) +
+  geom_point(color = "green") +  # You can also use geom_bar() if you prefer bars
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 0.5)) +
+  stat_summary(fun = mean, geom = "point", color = "blue", size = 2) +  # Black mean points
+  facet_wrap(~ Dataset, nrow = 1) + # Facet by DatasetName
+  geom_jitter(width = 0.2, alpha = 0.4, color = "tomato")
+  labs(title = "Accuracy by Learner and Dataset with Impurity filter", x = "Learner", y = "Accuracy") +
+  theme_minimal()
+```
+
+```{r}
+last_5_indexes <- (nrow(df_allgenes.perm)-4):nrow(df_allgenes.perm)
+
+# Replace last 5 values with new values  
+df_allgenes.perm$Learner[last_5_indexes] <- c("Penalized LR", "Penalized LR", "Penalized LR", "Penalized LR", "Penalized LR")
+
+
+```
+
+```{r}
+df_allgenes.perm$Learner <- sub("SVM radial", "SVM Radial", df_allgenes.perm$Learner)
+
+```
+
+
+
+
+VARIANCE
+```{r}
+resultallgenesVariance <- readRDS("/Users/suprithapalguna/Desktop/Thesis/resultallgenesVariance.RDS")
+df_allgenes_var <- as.data.frame(do.call(rbind, resultallgenesVariance))
+
+df_allgenes_var <- data.frame(
+  Accuracy = unlist(df_allgenes_var$accuracy),
+  Dataset = unlist(df_allgenes_var$data),
+  Learner = unlist(df_allgenes_var$model)
+)
+```
+```{r}
+
+```
+
+
+```{r}
+saveRDS(resultallgenesVariance, file = "resultallgenesVariance.RDS")
+```
+
+
+```{r}
+df_allgenes.var <- rbind(df_allgenes_var, df_filter)
+```
+
+
+```{r}
+df_allgenes.var$Accuracy <- as.numeric(df_allgenes.var$Accuracy)
+ggplot(df_allgenes.var, aes(x = Learner, y = Accuracy)) +
+  geom_point(color = "green") +  # You can also use geom_bar() if you prefer bars
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 0.5)) +
+  stat_summary(fun = mean, geom = "point", color = "blue", size = 2) +  # Black mean points
+  facet_wrap(~ Dataset, nrow = 1) + # Facet by DatasetName
+  geom_jitter(width = 0.2, alpha = 0.4, color = "tomato")
+  labs(title = "Accuracy by Learner and Dataset with Impurity filter", x = "Learner", y = "Accuracy") +
+  theme_minimal()
+```
+
+
+JMIM
+```{r}
+resultallgenesJmim <- c(readRDS("/Users/suprithapalguna/Downloads/resultsAllgenesJmimwithoutPLR.RDS"), ress)
+df_allgenes_jmim <- as.data.frame(do.call(rbind, resultallgenesJmim))
+
+df_allgenes_jmim <- data.frame(
+  Accuracy = unlist(df_allgenes_jmim$accuracy),
+  Dataset = unlist(df_allgenes_jmim$data),
+  Learner = unlist(df_allgenes_jmim$model)
+)
+```
+
+
+```{r}
+saveRDS(resultallgenesJmim, file = "resultallgenesJmim.RDS")
+```
+
+
+```{r}
+df_allgenes.jmim <- rbind(df_allgenes_jmim, df_filter)
+```
+
+
+```{r}
+df_allgenes$Accuracy <- as.numeric(df_allgenes$Accuracy)
+ggplot(df_allgenes, aes(x = Learner, y = Accuracy)) +
+  geom_point(color = "green") +  # You can also use geom_bar() if you prefer bars
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 0.5)) +
+  stat_summary(fun = mean, geom = "point", color = "blue", size = 2) +  # Black mean points
+  facet_wrap(~ Dataset, nrow = 1) + # Facet by DatasetName
+  geom_jitter(width = 0.2, alpha = 0.4, color = "tomato")
+  labs(title = "Accuracy by Learner and Dataset with Impurity filter", x = "Learner", y = "Accuracy") +
+  theme_minimal()
+```
+
+
+```{r}
+res_jmim2 <- readRDS("/Users/suprithapalguna/Downloads/resultsAllgenesVar2.RDS")
+df_allgenes_jmim2 <- as.data.frame(do.call(rbind, res_jmim2))
+
+df_allgenes_jmim2 <- data.frame(
+  Accuracy = unlist(df_allgenes_jmim2$accuracy),
+  Dataset = unlist(df_allgenes_jmim2$data),
+  Learner = unlist(df_allgenes_jmim2$model)
+)
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_allgenes_jmim2), by = 3)) {
+  subset_df <- df_allgenes_jmim2[i:(i + 2), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+```
+
+```{r}
+res_jmim2 <- readRDS("/Users/suprithapalguna/Downloads/resultsAllgenesJmim2.RDS")
+df_allgenes_jmim2 <- as.data.frame(do.call(rbind, res_jmim2))
+
+df_allgenes_jmim2 <- data.frame(
+  Accuracy = unlist(df_allgenes_jmim2$accuracy),
+  Dataset = unlist(df_allgenes_jmim2$data),
+  Learner = unlist(df_allgenes_jmim2$model)
+)
+averages_df <- data.frame(Accuracy = numeric(),
+                           Dataset = character(),
+                           Learner = character(),
+                           stringsAsFactors = FALSE)
+
+# Iterate over every 4 rows and calculate the average
+for (i in seq(1, nrow(df_allgenes_jmim2), by = 3)) {
+  subset_df <- df_allgenes_jmim2[i:(i + 2), ]  # Extract every 4 rows
+  avg_accuracy <- mean(subset_df$Accuracy)  # Calculate the average accuracy
+  row <- c(Accuracy = avg_accuracy,
+           Dataset = subset_df$Dataset[1],  # Assuming 'Dataset' is constant within each group
+           Learner = subset_df$Learner[1])  # Assuming 'Learner' is constant within each group
+  
+  averages_df <- rbind(averages_df, row)  # Append the average row to the new DataFrame
+}
+colnames(averages_df) <- c("Accuracy", "Dataset", "Learner")
+
+# Print the resulting DataFrame
+print(averages_df)
+```
+```{r}
+df_allgenes_jmim2 <- averages_df
+ df_allgenes_jmim2$Learner[1:5] <- "Penalized LR"
+```
+
+
+```{r}
+df_allgenes <- rbind(df_filter, df_allgenes_jmim2)
+```
+
+
+
+```{r}
+res11 <- applySVM(filtered.mup.geneData4)
+```
+```{r}
+res11
+```
+
+```{r}
+res <- applyRanger(filtered.mup.geneData2)
+```
+```{r}
+res$accuracy
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+learner$param_set$values = list(importance = "impurity")
+
+filter = flt("importance", learner = learner)
+filter$calculate(task)
+head(as.data.table(filter))
+```
+```{r}
+filtered.mup.imp <- head(as.data.table(filter)$feature, 500)
+filtered.mup.imp.geneData <- getMergedGenes(filtered.mup.imp)
+```
+
+```{r}
+res <- applyRanger(filtered.mup.imp.geneData)
+```
+```{r}
+res$accuracy
+```
+
+```{r}
+as.data.table(mlr_learners)[
+  sapply(properties, function(x) "importance" %in% x)]
+```
+```{r}
+lrn("classif.ranger")$param_set$levels$importance
+```
+
+
+```{r}
+x <- data[, -which(names(data) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+filter = flt("jmim")
+
+filter$calculate(task)
+head(filter$scores, 3)
+as.data.table(filter)
+
+```
+```{r}
+filtered.mup.imp <- head(as.data.table(filter)$feature, 500)
+filtered.mup.imp.geneData <- getMergedGenes(filtered.mup.imp)
+```
+
+```{r}
+res <- applyRanger(filtered.mup.imp.geneData)
+```
+
+```{r}
+res$accuracy
+```
+
+```{r}
+x <- data[, -which(names(data) == "Row.names")]
+task = as_task_classif(x, target = "Tumor", positive = "1")
+filter = flt("variance")
+
+filter$calculate(task)
+head(filter$scores, 3)
+as.data.table(filter)
+
+```
+
+```{r}
+filtered.mup.imp <- head(as.data.table(filter)$feature, 500)
+filtered.mup.imp.geneData <- getMergedGenes(filtered.mup.imp)
+```
+
+
+```{r}
+res <- applyRanger(filtered.mup.imp.geneData)
+```
+
+
+```{r}
+res$accuracy
+```
+
+
+
+```{r}
+x <- x[, -which(names(x) == "Row.names")]
+  taskSVM <- as_task_classif(x, target = "Tumor", positive = "1")
+  taskSVM$set_col_roles("Tumor", c("target", "stratum")) #Stratification
+  
+  learner.SVML = lrn("classif.svm", 
+                     cost  = to_tune(1e-12, 1e12, logscale = TRUE), 
+                     kernel = "linear", 
+                     type = "C-classification"
+  )
+
+  po_filter = po("filter", filter = flt("variance"), filter.nfeat = to_tune(1, taskSVM$ncol))
+  graph = as_learner(po_filter %>>% po("learner", learner.SVML))
+  
+  at = auto_tuner(tuner = tuner, learner = graph,
+                  resampling = rsmp("cv", folds = 3),
+                  measure = msr("classif.acc")
+  )
+  resampling = rsmp("cv", folds = 3)
+
+  rrSVML = resample(taskSVM, at, resampling, store_models = TRUE)
+
+  
+  accuracy = rrSVML$aggregate(msr("classif.acc")) 
+
+  confusionMatrix = rrSVML$prediction()$confusion
+  
+  
+  
+```
+
+
+
+
+
+
+```{r}
+calculate_AUC <- function(gene_expression, labels) {
+  roc_obj <- roc(labels, gene_expression)
+  return(auc(roc_obj))
+}
+
+# Function to permute labels and calculate AUC
+calculate_permuted_AUC <- function(gene_expression, labels) {
+  permuted_labels <- sample(labels)
+  return(calculate_AUC(gene_expression, permuted_labels))
+}
+```
+
+```{r}
+library(pROC)
+x <- all.genesData[, -which(names(all.genesData) == "Row.names")]
+  AUC_values <- sapply(1:(ncol(x) - 1), function(i) {
+    calculate_AUC(x[, i], x$Tumor)
+  })
+
+  # Permute labels and calculate AUC for each gene with permuted labels
+  permuted_AUC_values <- sapply(1:(ncol(x) - 1), function(i) {
+    calculate_permuted_AUC(x[, i], x$Tumor)
+  })
+```
+
+
+```{r}
+  # Create histograms for both AUC values
+  hist(AUC_values, main = "AUC Distribution (Actual Labels)", xlab = "AUC",xlim = c(0.2, 1), 
+     ylim = c(0, 5000), col = "skyblue", border = "darkblue")
+  hist(permuted_AUC_values, main = "AUC Distribution (Permuted Labels)", xlab = "AUC",xlim = c(0.2, 1),  ylim = c(0, 5000), col = "skyblue", border = "darkblue")
+
+```
+
+
+```{r}
+# Assuming you have a vector of AUC values named AUC_values
+
+# Set up a nice plot area
+par(mar=c(5, 5, 2, 5))
+
+# Create the histogram
+hist(AUC_values,
+     main = "AUC Distribution (Actual Labels)",
+     xlab = "AUC",
+     col = "skyblue",             # Define bar color
+     border = "darkblue",         # Define border color
+     xlim = c(0.2, 1),  
+     
+     ylim = c(0, 5000),# Set x-axis limits
+                  # Set y-axis limits (adjust as needed)
+     axes = FALSE                # Don't draw axes initially
+)
+
+# Label x and y axes
+axis(1, at = seq(0, 1, 0.1), las = 1)
+axis(2)
+
+
+
+
+```
+```{r}
+par(mar=c(5, 5, 2, 5))
+
+# Create the histogram
+hist(permuted_AUC_values,
+     main = "AUC Distribution (Actual Labels)",
+     xlab = "AUC",
+     col = "skyblue",             # Define bar color
+     border = "darkblue",         # Define border color
+     xlim = c(0, 1),
+     ylim = c(0, 5000), # Set x-axis limits
+     breaks = 20,              # Set y-axis limits (adjust as needed)
+     axes = FALSE                # Don't draw axes initially
+)
+
+# Label x and y axes
+axis(1, at = seq(0, 1, 0.1), las = 1)
+axis(2)
+```
+
+```{r}
+x <- model.up.genesData[, -which(names(model.up.genesData) == "Row.names")]
+  AUC_values <- sapply(1:(ncol(x) - 1), function(i) {
+    calculate_AUC(x[, i], x$Tumor)
+  })
+
+  # Permute labels and calculate AUC for each gene with permuted labels
+  permuted_AUC_values <- sapply(1:(ncol(x) - 1), function(i) {
+    calculate_permuted_AUC(x[, i], x$Tumor)
+  })
+
+  # Create histograms for both AUC values
+  hist(AUC_values, main = "AUC Distribution (Actual Labels)", xlab = "AUC")
+  hist(permuted_AUC_values, main = "AUC Distribution (Permuted Labels)", xlab = "AUC")
+```
+
+  
